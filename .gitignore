@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# CI / fastlane artifacts
+ios/ExportOptions.plist
+ios/fastlane/report.xml
+ios/fastlane/README.md
+**/*.p12
+**/*.p8
+*.mobileprovision

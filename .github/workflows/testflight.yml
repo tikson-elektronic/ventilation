@@ -38,8 +38,24 @@ jobs:
       - name: Write App Store Connect API key
         run: |
           mkdir -p ~/private_keys
-          echo "$ASC_API_KEY_BASE64" | base64 --decode > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+          P8=~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          echo "$ASC_API_KEY_BASE64" | base64 --decode > "$P8"
+          echo "ASC_KEY_PATH=$P8" >> "$GITHUB_ENV"
+          # fastlane's api_key_path wants a JSON descriptor, not the raw .p8
+          JSON=~/private_keys/asc_api_key.json
+          python3 - "$P8" "$JSON" <<'PY'
+          import json, os, sys
+          p8, out = sys.argv[1], sys.argv[2]
+          with open(p8) as f:
+              key = f.read()
+          json.dump({
+              "key_id": os.environ["ASC_KEY_ID"],
+              "issuer_id": os.environ["ASC_ISSUER_ID"],
+              "key": key,
+              "in_house": False,
+          }, open(out, "w"))
+          PY
+          echo "ASC_API_KEY_JSON=$JSON" >> "$GITHUB_ENV"
         env:
           ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
 
@@ -68,7 +84,7 @@ jobs:
           # for the app, using the App Store Connect API key.
           fastlane run get_provisioning_profile \
             app_identifier:"com.tikson.ventilation" \
-            api_key_path:"$ASC_KEY_PATH" \
+            api_key_path:"$ASC_API_KEY_JSON" \
             readonly:false \
             filename:"$RUNNER_TEMP/profile.mobileprovision"
           # Install it where Xcode looks for profiles.
